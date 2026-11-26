@@ -1,0 +1,102 @@
+# =====================================================================
+#  COME MI VESTO? - calcola cosa far indossare in base alle previsioni
+#  Dalle 18:00 in poi guarda già il giorno dopo (comodo per preparare
+#  i vestiti la sera).
+# =====================================================================
+template:
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: event_template_reloaded
+      - trigger: time_pattern
+        minutes: "/30"
+    actions:
+      - variables:
+          # ⚙️ CONFIGURAZIONE ------------------------------------------
+          meteo: weather.forecast_casa   # ← la TUA entità meteo
+          soglia_gelo: 5        # min sotto 5°  → piumino + guanti
+          soglia_freddo: 12     # min sotto 12° → giubbotto, cappello, sciarpa
+          soglia_fresco: 18     # min sotto 18° → giacca leggera
+          soglia_caldo: 26      # max da 26° in su → maglietta e pantaloncini
+          soglia_pioggia: 50    # % di probabilità oltre cui serve l'ombrello
+          ora_inizio: "07:00"   # fascia oraria in cui è fuori casa
+          ora_fine: "18:00"     # dopo quest'ora mostra il giorno dopo
+          # -------------------------------------------------------------
+      - action: weather.get_forecasts
+        target:
+          entity_id: "{{ meteo }}"
+        data:
+          type: hourly
+        response_variable: previsioni
+      - variables:
+          giorno: "{{ 'domani' if now() >= today_at(ora_fine) else 'oggi' }}"
+          ore: >-
+            {% set g = 1 if giorno == 'domani' else 0 %}
+            {% set inizio = today_at(ora_inizio) + timedelta(days=g) %}
+            {% set inizio = now() if (g == 0 and now() > inizio) else inizio %}
+            {% set fine = today_at(ora_fine) + timedelta(days=g) %}
+            {% set ns = namespace(l=[]) %}
+            {% for f in previsioni[meteo].forecast %}
+              {% set t = as_datetime(f.datetime) %}
+              {% if inizio - timedelta(hours=1) < t <= fine %}{% set ns.l = ns.l + [f] %}{% endif %}
+            {% endfor %}
+            {{ ns.l if ns.l | count > 0 else previsioni[meteo].forecast[:12] }}
+      - variables:
+          t_min: "{{ ore | map(attribute='temperature') | min | round(0) | int }}"
+          t_max: "{{ ore | map(attribute='temperature') | max | round(0) | int }}"
+          prob_pioggia: "{{ ore | map(attribute='precipitation_probability', default=0) | map('int', 0) | max }}"
+          mm_pioggia: "{{ ore | map(attribute='precipitation', default=0) | map('float', 0) | sum | round(1) }}"
+          ore_pioggia: "{{ ore | selectattr('condition', 'in', ['rainy','pouring','lightning-rainy','snowy-rainy','hail']) | list | count }}"
+          ore_neve: "{{ ore | selectattr('condition', 'in', ['snowy','snowy-rainy']) | list | count }}"
+          ore_sole: "{{ ore | selectattr('condition', 'eq', 'sunny') | list | count }}"
+          livello: >-
+            {%- if t_min < soglia_gelo -%}gelo
+            {%- elif t_min < soglia_freddo -%}freddo
+            {%- elif t_min < soglia_fresco -%}fresco
+            {%- elif t_max >= soglia_caldo -%}caldo
+            {%- else -%}mite{%- endif -%}
+          pioggia: "{{ prob_pioggia >= soglia_pioggia or ore_pioggia >= 2 or mm_pioggia >= 1 }}"
+          neve: "{{ ore_neve > 0 }}"
+          sole_forte: "{{ livello == 'caldo' and ore_sole >= (ore | count) / 2 }}"
+
+    sensor:
+      - name: Vestiti livello
+        unique_id: vestiti_bimba_livello
+        state: "{{ livello }}"
+        icon: >-
+          {{ {'gelo':'mdi:snowflake','freddo':'mdi:thermometer-low','fresco':'mdi:weather-windy',
+              'mite':'mdi:weather-partly-cloudy','caldo':'mdi:weather-sunny'}[livello] }}
+        attributes:
+          giorno: "{{ giorno }}"
+          t_min: "{{ t_min }}"
+          t_max: "{{ t_max }}"
+          prob_pioggia: "{{ prob_pioggia }}"
+          titolo: >-
+            {{ {'gelo':'Brrr, che gelo! 🥶','freddo':'Fa freddo! ❄️','fresco':'Fa freschino 🍃',
+                'mite':'Si sta bene 🙂','caldo':'Fa caldo! ☀️'}[livello] }}
+          messaggio: >-
+            {%- set capi = {
+              'gelo':   'piumino, cappello di lana, sciarpa e guanti',
+              'freddo': 'giubbotto pesante, cappello e sciarpa',
+              'fresco': 'giacca leggera e pantaloni lunghi',
+              'mite':   'felpa e pantaloni lunghi',
+              'caldo':  'maglietta e pantaloncini' } -%}
+            Metti {{ capi[livello] }}
+            {%- if pioggia %}. Non dimenticare stivali e ombrello ☔{% endif %}
+            {%- if neve %}. Nevica! ⛄{% endif %}
+            {%- if sole_forte %}. Cappellino e occhiali da sole 😎{% endif %}
+
+    binary_sensor:
+      - name: Vestiti pioggia
+        unique_id: vestiti_bimba_pioggia
+        icon: mdi:umbrella
+        state: "{{ pioggia }}"
+      - name: Vestiti neve
+        unique_id: vestiti_bimba_neve
+        icon: mdi:snowman
+        state: "{{ neve }}"
+      - name: Vestiti sole forte
+        unique_id: vestiti_bimba_sole_forte
+        icon: mdi:sunglasses
+        state: "{{ sole_forte }}"

@@ -1,0 +1,136 @@
+# Nuova dashboard → ⋮ → Modifica → ⋮ → Editor di configurazione testuale → incolla
+title: Come mi vesto?
+views:
+  - title: Come mi vesto?
+    path: vestiti
+    icon: mdi:tshirt-crew
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              # {{ state_attr('sensor.vestiti_livello', 'titolo') }}
+              ### Per {{ state_attr('sensor.vestiti_livello', 'giorno') }}: {{ state_attr('sensor.vestiti_livello', 'messaggio') }}
+              🌡️ da {{ state_attr('sensor.vestiti_livello', 't_min') }}° a {{ state_attr('sensor.vestiti_livello', 't_max') }}° · ☔ pioggia {{ state_attr('sensor.vestiti_livello', 'prob_pioggia') }}%
+          - type: picture-elements
+            image: /local/vestiti/sfondo.svg
+            elements:
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_pioggia
+                    state: "off"
+                  - entity: binary_sensor.vestiti_neve
+                    state: "off"
+                elements:
+                  - type: image
+                    image: /local/vestiti/meteo_sole.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_pioggia
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/meteo_pioggia.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_neve
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/meteo_neve.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: image
+                image: /local/vestiti/base.svg
+                tap_action:
+                  action: none
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+                  pointer-events: none
+              - type: image
+                entity: sensor.vestiti_livello
+                image: /local/vestiti/mite.svg
+                state_image:
+                  gelo: /local/vestiti/gelo.svg
+                  freddo: /local/vestiti/freddo.svg
+                  fresco: /local/vestiti/fresco.svg
+                  mite: /local/vestiti/mite.svg
+                  caldo: /local/vestiti/caldo.svg
+                tap_action:
+                  action: none
+                hold_action:
+                  action: none
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+                  pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_pioggia
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/stivali.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_sole_forte
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/estate.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_pioggia
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/ombrello.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+          - type: weather-forecast
+            entity: weather.forecast_casa
+            forecast_type: hourly
+            show_current: false
