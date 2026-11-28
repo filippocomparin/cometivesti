@@ -22,6 +22,8 @@ template:
           soglia_pioggia: 50    # % di probabilità oltre cui serve l'ombrello
           ora_inizio: "07:00"   # fascia oraria in cui è fuori casa
           ora_fine: "18:00"     # dopo quest'ora mostra il giorno dopo
+          giorno_lenzuola: 1    # giorno della settimana (1=lunedì … 7=domenica)
+          giorno_libro: 2       # giorno della settimana (1=lunedì … 7=domenica)
           # -------------------------------------------------------------
       - action: weather.get_forecasts
         target:
@@ -59,6 +61,10 @@ template:
           pioggia: "{{ prob_pioggia >= soglia_pioggia or ore_pioggia >= 2 or mm_pioggia >= 1 }}"
           neve: "{{ ore_neve > 0 }}"
           sole_forte: "{{ livello == 'caldo' and ore_sole >= (ore | count) / 2 }}"
+          # giorno della settimana a cui si riferisce la selezione (oggi o domani)
+          giorno_sett: "{{ (now() + timedelta(days=1 if giorno == 'domani' else 0)).isoweekday() }}"
+          lenzuola: "{{ giorno_sett | int == giorno_lenzuola }}"
+          libro: "{{ giorno_sett | int == giorno_libro }}"
 
     sensor:
       - name: Vestiti livello
@@ -86,6 +92,8 @@ template:
             {%- if pioggia %}. Non dimenticare stivali e ombrello ☔{% endif %}
             {%- if neve %}. Nevica! ⛄{% endif %}
             {%- if sole_forte %}. Cappellino e occhiali da sole 😎{% endif %}
+            {%- if lenzuola %}. Porta le lenzuola 🛏️{% endif %}
+            {%- if libro %}. Porta il libro 📚{% endif %}
 
     binary_sensor:
       - name: Vestiti pioggia
@@ -100,3 +108,11 @@ template:
         unique_id: vestiti_bimba_sole_forte
         icon: mdi:sunglasses
         state: "{{ sole_forte }}"
+      - name: Vestiti lenzuola
+        unique_id: vestiti_bimba_lenzuola
+        icon: mdi:bed
+        state: "{{ lenzuola }}"
+      - name: Vestiti libro
+        unique_id: vestiti_bimba_libro
+        icon: mdi:book-open-variant
+        state: "{{ libro }}"

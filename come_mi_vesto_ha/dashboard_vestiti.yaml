@@ -130,6 +130,34 @@ views:
                       left: 50%
                       width: 100%
                       pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_lenzuola
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/lenzuola.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.vestiti_libro
+                    state: "on"
+                elements:
+                  - type: image
+                    image: /local/vestiti/libro.svg
+                    tap_action:
+                      action: none
+                    style:
+                      top: 50%
+                      left: 50%
+                      width: 100%
+                      pointer-events: none
           - type: weather-forecast
             entity: weather.forecast_casa
             forecast_type: hourly
